@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Пример HTML-страницы</title>
+    </head>
+<body>
+    <input type="text" id="inputField">
+    <button onclick="sendRequest()">Get</button>
+    <pre><div id="response"></div></pre>
+    <script>
+        function sendRequest() {
+            var input = document.getElementById("inputField").value;
+            var url = "http://localhost:8000/api/v1/model/" + input;
+
+            var xhr = new XMLHttpRequest();
+            xhr.open("GET", url, true);
+            xhr.onreadystatechange = function () {
+                if (xhr.readyState === 4) {
+                    var responseDiv = document.getElementById("response");
+                    responseDiv.innerHTML = "Status: " + xhr.status + "<br>Response: " + JSON.stringify(JSON.parse(xhr.responseText), null, 2);
+                }
+            };
+            xhr.send();
+        }
+    </script>
+    </body>
+</html>

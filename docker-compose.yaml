@@ -1,0 +1,56 @@
+services:
+  db:
+    image: postgres:15.3-alpine3.18
+    environment:
+      - POSTGRES_PASSWORD=l0_hard_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres_init.sql:/docker-entrypoint-initdb.d/postgres_init.sql
+    restart: always
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U l0_back_user -d l0_back_db" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 1s
+    ports:
+      - 5432:5432
+  migrations:
+    build:
+      context: .
+      dockerfile: goose.dockerfile
+    environment:
+      - POSTGRES_HOST=db
+      - POSTGRES_USER=l0_back_user
+      - POSTGRES_PASSWORD=l0_back_hard_password
+      - POSTGRES_DB=l0_back_db
+    depends_on:
+      db:
+        condition: service_healthy
+  nats_streaming:
+    image: nats-streaming:0.25.5-alpine3.18
+    ports:
+      - 4223:4223
+      - 8223:8223
+    volumes:
+      - nats_data:/datastore
+    command: ["nats-streaming-server", "-p", "4223", "-m", "8223", "-cid", "cluster", "-store", "file", "-dir", "datastore"]
+  app:
+    build:
+      dockerfile: server.dockerfile
+    ports:
+      - 8000:8000
+    restart: always
+    volumes:
+      - ./model/schema.json:/app/model/schema.json
+    depends_on:
+      db:
+        condition: service_healthy
+      migrations:
+        condition: service_completed_successfully
+      nats_streaming:
+        condition: service_started
+
+volumes:
+  postgres_data:
+  nats_data:
